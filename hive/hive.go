@@ -19,13 +19,13 @@ type Hive struct {
 	HiveCommand string
 }
 
-func SetHostInfo(Server string, User string, Password string, Database string) *Hive {
+func SetHostInfo(Server, User, Password, Database string) *Hive {
 	Host := Hive{}
 	Host.Server = Server
 	Host.User = User
 	Host.Password = Password
 	Host.Database = Database
-
+	Host.HiveCommand = ""
 	return &Host
 }
 
