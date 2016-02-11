@@ -68,11 +68,42 @@ func (h *Hive) command(cmd ...string) *exec.Cmd {
 	return exec.Command("sh", arg...)
 }
 
+// func (h *Hive) Exec(query string) (out []byte, e error) {
+// 	h.HiveCommand = query
+// 	//cmd := exec.Command("sh", "-c", h.cmdStr())
+// 	cmd := h.command(h.cmdStr())
+// 	out, e = cmd.Output()
+// 	return
+// }
+
 func (h *Hive) Exec(query string) (out []byte, e error) {
 	h.HiveCommand = query
-	//cmd := exec.Command("sh", "-c", h.cmdStr())
 	cmd := h.command(h.cmdStr())
-	out, e = cmd.Output()
+	pipes, err := cmd.StdoutPipe()
+
+	scanner := bufio.NewScanner(pipes)
+
+	idx := 0
+	go func() {
+		for scanner.Scan() {
+			idx++
+			fmt.Printf("index = %s | %s\n", string(idx), scanner.Text())
+		}
+	}()
+
+	err = cmd.Start()
+
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error starting Cmd", err)
+		os.Exit(1)
+	}
+
+	err = cmd.Wait()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error waiting for Cmd", err)
+		os.Exit(1)
+	}
+
 	return
 }
 
