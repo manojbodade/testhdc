@@ -124,7 +124,7 @@ func (h *Hive) ExecFile(filepath string) (hs *HiveSession, e error) {
 		fmt.Println(err)
 	}
 
-	return nil, nil
+	return nil, err
 }
 
 func (h *Hive) ExecNonQuery(query string) (e error) {
