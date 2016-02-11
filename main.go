@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	. "github.com/RyanCi/hdc/hive"
+	. "github.com/RyanCi/testhdc/hive"
 	// "os"
 )
 
