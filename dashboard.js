@@ -19,6 +19,7 @@ ds.detailed = {
     hostname : ko.observable(''),
     serverport : ko.observable(''),
     lastsync : ko.observable(new Date()),
+    country : ko.observable(''),
     purple : ko.observable(''),
     green : ko.observable(''),
     red : ko.observable(''),
@@ -40,9 +41,9 @@ ds.historytoshowList = ko.observableArray([{value:"Subscription Status",text:"Su
                                            // {value:"Subscription Latency per Application",text:"Subscription Latency per Application"},
                                         ])
 ds.historymode = ko.observable('Frequency Cycle')
-ds.historymodeList = ko.observableArray([{value:"Frequency Cycle",text:"Frequency Cycle"},
-                                         {value:"Daily",text:"Daily"},
-                                         {value:"Weekly",text:"Weekly"},
+ds.historymodeList = ko.observableArray([{value:"Frequency Cycle",text:"Last 24 Hours"},
+                                         {value:"Daily",text:"Last 8 Days"},
+                                         {value:"Weekly",text:"Last 8 Weeks"},
                                         ])
 ds.selectortop = ko.observable('5')
 ds.selectortopList = ko.observableArray([{value:"5",text:"5"},
@@ -55,9 +56,14 @@ ds.subsstartdate = ko.observable(kendo.toString(new Date(moment().subtract(1, 'm
 ds.subsenddate = ko.observable(kendo.toString(new Date(), "yyyy-MM-dd HH:mm:ss"))
 ds.min = ko.observable(0)
 ds.minThirty = ko.observable(false)
+ds.date = ko.observableArray([])
+
+ds.serverList = ko.observableArray([])
+ds.ssindex = ko.observable('')
 
 
-ds.getTiles = function(){
+// cdc
+ds.getCDC = function(){
 	var payload = {
 
 	}
@@ -154,11 +160,16 @@ ds.getSubscriptionData = function(latency){
         columns: [
             { field: "Subscription", title: "Subscription Name",
               template: function(e){
-                return '<a class="texttitle" onclick="ds.subscriptionDetail(\''+e.Subscription+'\',\''+e.Source+'\',\''+e.Target+'\')">'+e.Subscription+'</a>'
+                return '<a class="texttitle" onclick="ds.subscriptionDetail(\''+e.Subscription+'\',\''+e.Source+'\',\''+e.Target+'\',\''+e.Country+'\')">'+e.Subscription+'</a>'
               }
             },
-            { field: "Source", title: "Source Datasource",},
-            { field: "Target", title: "Target Datastore",},
+            { field: "Source", title: "Src Datastore",},
+            { field: "Target", title: "Tgt Datastore",},
+            { field: "Country", title: "Country",
+              attributes: {
+                class: "field-ellipsis",
+              },
+            },
             { field: "Status", title: "Status",},
             { field: "", title: "Subscription Status",
               attributes: {
@@ -205,11 +216,13 @@ ds.getSubscriptionData = function(latency){
     }); 
 }
 
-ds.subscriptionDetail = function(subs, source, target){
+ds.subscriptionDetail = function(subs, source, target, country){
     ds.tab('tab3')
     ds.detailed.subscription(subs)
     ds.detailed.source(source)
     ds.detailed.target(target)
+    ds.detailed.country(country)
+
     var payload = {
         Server: ds.detailed.hostname(),
         Port: ds.detailed.serverport(),
@@ -272,7 +285,7 @@ ds.historymode.subscribe(function(newValue){
     if (ds.historymode() == 'Daily') {
         $("#serverenddatepicker"+ds.index()).kendoDatePicker({
             format: "yyyy-MM-dd",
-            value: new Date(moment(ds.subsstartdate()).add(8, 'days'))
+            value: new Date(moment(ds.serverstartdate()).add(8, 'days'))
         })
         $("#subsenddatepicker"+ds.index()).kendoDatePicker({
             format: "yyyy-MM-dd",
@@ -281,7 +294,7 @@ ds.historymode.subscribe(function(newValue){
     }else if (ds.historymode() == 'Weekly') {
         $("#serverenddatepicker"+ds.index()).kendoDatePicker({
             format: "yyyy-MM-dd",
-            value: new Date(moment(ds.subsstartdate()).add(8, 'week'))
+            value: new Date(moment(ds.serverstartdate()).add(8, 'week'))
         })
         $("#subsenddatepicker"+ds.index()).kendoDatePicker({
             format: "yyyy-MM-dd",
@@ -290,7 +303,7 @@ ds.historymode.subscribe(function(newValue){
     }else{
         $("#serverenddatepicker"+ds.index()).kendoDatePicker({
             format: "yyyy-MM-dd",
-            value: new Date(ds.subsstartdate(), "yyyy-MM-dd HH:mm:ss")
+            value: new Date(ds.serverstartdate(), "yyyy-MM-dd HH:mm:ss")
         })
         $("#subsenddatepicker"+ds.index()).kendoDatePicker({
             format: "yyyy-MM-dd",
@@ -305,7 +318,8 @@ ds.getSubscriptionDetail = function(){
         dataSource: {
             transport: {
                read:function(option){
-                    option.success(ds.subscriptionDetailList()[0].Activity);
+                    var data = (ds.subscriptionDetailList()[0].Activity ==  []) ? [] : ds.subscriptionDetailList()[0].Activity
+                    option.success(data);
                 },
                 parameterMap: function(data) {
                    return JSON.stringify(data);
@@ -367,7 +381,8 @@ ds.getSubscriptionDetail = function(){
         dataSource: {
             transport: {
                read:function(option){
-                    option.success(ds.subscriptionDetailList()[0].PerformanceStatistics);
+                    var data = (ds.subscriptionDetailList()[0].PerformanceStatistics ==  []) ? [] : ds.subscriptionDetailList()[0].PerformanceStatistics
+                    option.success(data);
                 },
                 parameterMap: function(data) {
                    return JSON.stringify(data);
@@ -427,7 +442,8 @@ ds.getSubscriptionDetail = function(){
         dataSource: {
             transport: {
                read:function(option){
-                    option.success(ds.subscriptionDetailList()[0].Latency);
+                    var data = (ds.subscriptionDetailList()[0].Latency ==  []) ? [] : ds.subscriptionDetailList()[0].Latency
+                    option.success(data);
                 },
                 parameterMap: function(data) {
                    return JSON.stringify(data);
@@ -487,7 +503,8 @@ ds.getSubscriptionDetail = function(){
         dataSource: {
             transport: {
                read:function(option){
-                    option.success(ds.subscriptionDetailList()[0].BusyTables);
+                    var data = (ds.subscriptionDetailList()[0].BusyTables ==  []) ? [] : ds.subscriptionDetailList()[0].BusyTables
+                    option.success(data);
                 },
                 parameterMap: function(data) {
                    return JSON.stringify(data);
@@ -548,7 +565,8 @@ ds.getSubscriptionDetail = function(){
         dataSource: {
             transport: {
                read:function(option){
-                    option.success(ds.subscriptionDetailList()[0].EventLog);
+                    var data = (ds.subscriptionDetailList()[0].EventLog ==  []) ? [] : ds.subscriptionDetailList()[0].EventLog
+                    option.success(data);
                 },
                 parameterMap: function(data) {
                    return JSON.stringify(data);
@@ -618,7 +636,8 @@ ds.getSubscriptionDetail = function(){
         dataSource: {
             transport: {
                read:function(option){
-                    option.success(ds.subscriptionDetailList()[0].TableMappings);
+                    var data = (ds.subscriptionDetailList()[0].TableMappings ==  []) ? [] : ds.subscriptionDetailList()[0].TableMappings
+                    option.success(data);
                 },
                 parameterMap: function(data) {
                    return JSON.stringify(data);
@@ -682,7 +701,8 @@ ds.getSubscriptionDetail = function(){
         dataSource: {
             transport: {
                read:function(option){
-                    option.success(ds.subscriptionDetailList()[0].DDLChanges);
+                    var data = (ds.subscriptionDetailList()[0].DDLChanges ==  []) ? [] : ds.subscriptionDetailList()[0].DDLChanges
+                    option.success(data);
                 },
                 parameterMap: function(data) {
                    return JSON.stringify(data);
@@ -693,13 +713,12 @@ ds.getSubscriptionDetail = function(){
                 model: {
                     fields: {
                         Timestamp: { type: "date" },
-                        SourceTable: { type: "string" },
-                        TargetTable: { type: "string" },
+                        Row: { type: "string" },
+                        EventID: { type: "string" },
                         Type: { type: "string" },
-                        Method: { type: "string" },
-                        Status: { type: "string" },
-                        Prevent: { type: "string" },
-                        Context: { type: "string" },
+                        Time: { type: "string" },
+                        Object: { type: "string" },
+                        Message: { type: "string" },
                     }
                 }
             }
@@ -710,13 +729,14 @@ ds.getSubscriptionDetail = function(){
             { field: "Timestamp", title: "Timestamp",
               template: '#= kendo.toString(new Date(Timestamp), "yyyy-MM-dd HH:mm:ss") #'
             },
-            { field: "SourceTable", title: "SourceTable",},
-            { field: "TargetTable", title: "TargetTable",},
+            { field: "Row", title: "Row",},
+            { field: "EventID", title: "EventID",},
             { field: "Type", title: "Type",},
-            { field: "Method", title: "Method",},
-            { field: "Status", title: "Status",},
-            { field: "Prevent", title: "Prevent",},
-            { field: "Context", title: "Context",},
+            { field: "Time", title: "Time",
+              template: '#= kendo.toString(new Date(Time), "yyyy-MM-dd HH:mm:ss") #'
+            },
+            { field: "Object", title: "Object",},
+            { field: "Message", title: "Message",},
         ],
         filterable: {
             extra:false, 
@@ -745,16 +765,23 @@ ds.getSubscriptionDetail = function(){
     ds.dataloading(false)
 }
 
-ds.viewServerHistory = function(){
+ds.viewServerHistory = function(index){
+    ds.index(index)
+    ds.forDetail(index)
+    
+    ds.detailed.hostname(ds.tileList()[index].Server)
+    ds.detailed.serverport(ds.tileList()[index].Port)
+    ds.detailed.lastsync(ds.tileList()[index].LastSync)
+
     ds.serverhistory(true)
     ds.getServerHistoryData()
-    $("#serverstartdatepicker"+ds.index()).kendoDatePicker({
+    $("#serverstartdatepicker"+index).kendoDatePicker({
         format: "yyyy-MM-dd",
     })
-    $("#serverenddatepicker"+ds.index()).kendoDatePicker({
+    $("#serverenddatepicker"+index).kendoDatePicker({
         format: "yyyy-MM-dd",
     })
-    $("#serverdatepicker"+ds.index()).kendoDatePicker({
+    $("#serverdatepicker"+index).kendoDatePicker({
         format: "yyyy-MM-dd",
     })
 }
@@ -772,30 +799,50 @@ ds.getServerHistoryData = function(){
         WhatToShow: "Access Server",
     }
     if (ds.historymode() == 'Daily') {
+        $("#serverenddatepicker"+ds.index()).kendoDatePicker({
+            format: "yyyy-MM-dd",
+            value: new Date(moment(ds.serverstartdate()).add(8, 'days'))
+        })
         payload.StringEndDate = kendo.toString(new Date(moment(ds.serverstartdate()).add(8, 'days')), "yyyy-MM-dd 00:00:00")
     }else if (ds.historymode() == 'Weekly') {
+        $("#serverenddatepicker"+ds.index()).kendoDatePicker({
+            format: "yyyy-MM-dd",
+            value: new Date(moment(ds.serverstartdate()).add(8, 'week'))
+        })
         payload.StringEndDate = kendo.toString(new Date(moment(ds.serverstartdate()).add(8, 'week')), "yyyy-MM-dd 00:00:00")
     }else{
+        $("#serverenddatepicker"+ds.index()).kendoDatePicker({
+            format: "yyyy-MM-dd",
+            value: new Date(ds.serverstartdate(), "yyyy-MM-dd HH:mm:ss")
+        })
         payload.StringEndDate = kendo.toString(new Date(ds.serverstartdate()), "yyyy-MM-dd 00:00:00")
     }
 
     ajaxPost("/dashboard/gethistory", payload, function (res) {
         if (ds.historymode() == 'Daily') {
             var res = _.sortBy(res.data.linedata, 'category')
-            ds.serverHistoryDatanonFreq(res,'count', 'Date', 'Access Server', -50)
+            ds.serverHistoryDataDaily(res)
         }else if (ds.historymode() == 'Weekly') {
             var res = _.sortBy(res.data.linedata, 'category')
-            ds.serverHistoryDatanonFreq(res,'count', 'Week', 'Access Server', 0)
+            ds.serverHistoryDataWeekly(res)
         }else{
             var res = _.sortBy(res.data.linedata, 'time')
-            ds.serverHistoryData(res)
+            var dates = []
+            $.each(res, function(i,v){
+                dates.push(v.time.split(' ')[0])
+            })
+            var median = dates[Math.floor(dates.length / 2)]
+            ds.serverHistoryData(res, median)
         }
     })
 }
 
-ds.serverHistoryData = function(res){
+ds.serverHistoryData = function(res, median){
     $("#serverchart"+ds.index()).html('')
     $("#serverchart"+ds.index()).kendoChart({
+        title: {
+            text: "Access Server Connection Status"
+        },
         dataSource: {
             data:res,
             dataType: "json"
@@ -827,12 +874,31 @@ ds.serverHistoryData = function(res){
                 visible: true
             },
         },
-        categoryAxis: {
+        categoryAxis:[{
             field: "time",
             labels: {
-                rotation: -50
+                template: function(e){
+                    var hour = e.value.split(' ')
+                    var hour = hour[1].split(':')
+                    return hour[0]
+                }
             },
-        },
+            title:{
+                font: "12px Arial,Helvetica,sans-serif",
+                text: median
+            }
+        },{
+            field: "time",
+            labels: {
+                visible: false
+            },
+            line: {
+                visible: false
+            },
+            title:{
+                text: 'Hours & Date'
+            }
+        }],
         tooltip: {
             visible: false,
             template: "#= series.name #: #= value #"
@@ -840,9 +906,12 @@ ds.serverHistoryData = function(res){
     });
 }
 
-ds.serverHistoryDatanonFreq = function(res, field, categorytitle, valuetitle, rotate){
+ds.serverHistoryDataDaily = function(res){
     $("#serverchart"+ds.index()).html('')
     $("#serverchart"+ds.index()).kendoChart({
+        title: {
+            text: "Access Server Connection Status"
+        },
         dataSource: {
             data:res,
             dataType: "json"
@@ -858,12 +927,15 @@ ds.serverHistoryDatanonFreq = function(res, field, categorytitle, valuetitle, ro
             style: "smooth"
         },
         series: [{
-            field: field,
-            name: field
+            field: 'count',
+            name: 'count'
         }],
         valueAxis: {
             labels: {
                 visible: true,
+            },
+            title:{
+                text: 'Count Connection'
             },
             line: {
                 visible: true
@@ -872,17 +944,61 @@ ds.serverHistoryDatanonFreq = function(res, field, categorytitle, valuetitle, ro
         categoryAxis: {
             field: "category",
             labels: {
-                rotation: rotate,
+                rotation: -50,
                 step: 1
             },
             title:{
-                text: categorytitle,
+                text: 'Date',
             },
             axisCrossingValue: [0, 100]
         },
         tooltip: {
-            visible: false,
+            visible: true,
             template: "#= series.name #: #= value #"
+        }
+    });
+}
+
+ds.serverHistoryDataWeekly = function(res){
+    $("#serverchart"+ds.index()).html('')
+    $("#serverchart"+ds.index()).kendoChart({
+        title: {
+            text: "Access Server Connection Status"
+        },
+        dataSource: {
+            data:res
+        },
+        seriesDefaults: {
+            type: 'line',
+            style: "smooth"
+        },
+        series: [{
+            field: 'count',
+            name: 'count'
+        }],
+        valueAxis: {
+           title:{
+                text: 'Count Connection'
+            },
+        },
+        categoryAxis: {
+            field: "weekstart",
+            labels:{
+                template: function(e){
+                    var start = e.dataItem.weekstart.split('-')[1] +'/'+ e.dataItem.weekstart.split('-')[2];
+                    var end = e.dataItem.weekend.split('-')[1] +'/'+ e.dataItem.weekend.split('-')[2];
+                    return start + ' ~ ' + end
+                }
+            },
+            title:{
+                text: 'Date'
+            },
+        },
+        tooltip: {
+            visible: true,
+        },
+        legend:{
+            visible:false
         }
     });
 }
@@ -973,10 +1089,22 @@ ds.getSubsHistoryData = function(){
     }
 
     if (ds.historymode() == 'Daily') {
+        $("#subsenddatepicker"+ds.index()).kendoDatePicker({
+            format: "yyyy-MM-dd",
+            value: new Date(moment(ds.subsstartdate()).add(8, 'days'))
+        })
         payload.StringEndDate = kendo.toString(new Date(moment(ds.subsstartdate()).add(8, 'days')), "yyyy-MM-dd 00:00:00")
     }else if (ds.historymode() == 'Weekly') {
+        $("#subsenddatepicker"+ds.index()).kendoDatePicker({
+            format: "yyyy-MM-dd",
+            value: new Date(moment(ds.subsstartdate()).add(8, 'week'))
+        })
         payload.StringEndDate = kendo.toString(new Date(moment(ds.subsstartdate()).add(8, 'week')), "yyyy-MM-dd 00:00:00")
     }else{
+        $("#subsenddatepicker"+ds.index()).kendoDatePicker({
+            format: "yyyy-MM-dd",
+            value: new Date(ds.subsstartdate(), "yyyy-MM-dd HH:mm:ss")
+        })
         payload.StringEndDate = kendo.toString(new Date(ds.subsstartdate()), "yyyy-MM-dd 00:00:00")
     }
 
@@ -993,52 +1121,62 @@ ds.getSubsHistoryData = function(){
         var res = _.sortBy(res.data.linedata, 'category')
         if (ds.historytoshow() == 'Subscription Busy Tables') {
             if (ds.historymode() == 'Daily') {
-                // data = []
-                // max = ds.selectortop();
-                // if(res.length < max){
-                //     max = res.length
-                // }
-                // for(i=0; i<max; i++){
-                //     data.push({category:res[i].category,records:res[i].records,table:res[i].table})
-                // }
-                ds.subsLineHistoryDataDaily(res,'records', 'Busy Tables Records', 2, 0)
+                ds.subsLineHistoryDataDaily(res,'records', 'Number of Occurence', 2, 0, 'Busy Tables List')
             }else if (ds.historymode() == 'Weekly') {
-                ds.subsLineHistoryDataWeek(res,'records', 'Busy Tables Records', 5, 0)
+                ds.subsLineHistoryDataWeek(res,'records', 'Number of Occurence', 5, 0, 'Busy Tables List')
             }else{
-                ds.subsLineHistoryData(res,'records', 'Date & Hour', 'Busy Tables Records', -50)
+                var dates = []
+                $.each(res, function(i,v){
+                    dates.push(v.category.split(' ')[0])
+                })
+                var median = dates[Math.floor(dates.length / 2)]
+                ds.subsLineHistoryData(res,'records', 'Busy Tables Records', 'Busy Tables List', median)
             }
         }else if (ds.historytoshow() == 'Subscription Latency') {
             if (ds.historymode() == 'Daily') {
-                ds.subsLineHistoryDataDaily(res, 'latency', 'Latency (mins)', 30, ds.min())
+                ds.subsLineHistoryDataLatencyDaily(res, 'value', 'Latency (mins)', 30, ds.min(), '')
             }else if (ds.historymode() == 'Weekly') {
-                ds.subsLineHistoryDataWeek(res, 'latency', 'Latency (mins)', 30, ds.min())
+                ds.subsLineHistoryDataLatencyWeek(res, 'value', 'Latency (mins)', 30, ds.min(), '')
             }else{
-                ds.subsLineHistoryDataLatencyFreq(res,'threshold', 'Date & Hour', 'Latency (mins)', -50, 30, ds.min())
+                var dates = []
+                $.each(res, function(i,v){
+                    dates.push(v.category.split(' ')[0])
+                })
+                var median = dates[Math.floor(dates.length / 2)]
+                ds.subsLineHistoryDataLatencyFreq(res,'threshold', 'Latency (mins)', 30, ds.min(), '', median)
             }
         }else if (ds.historytoshow() == 'Subscription DDL Changes') {
             if (ds.historymode() == 'Daily') {
-                ds.subsLineHistoryData(res,'alias', 'Date', 'DDL', -50)
+                ds.subsLineHistoryDataDaily(res,'sumDDL', 'Number of Occurence', 2, 0, 'DDL')
             }else if (ds.historymode() == 'Weekly') {
-                ds.subsLineHistoryData(res,'alias', 'Week', 'DDL', 0)
+                ds.subsLineHistoryDataWeek(res,'sumDDL', 'Number of Occurence', 5, 0, 'DDL')
             }else{
-                ds.subsLineHistoryData(res,'alias', 'Hours', 'DDL', 0)
+                ds.subsLineHistoryData(res,'sumDDL', 'Date & Hour', 'DDL', -50, 'DDL')
             }
         }else{
             var res = _.sortBy(res, 'period')
             if (ds.historymode() == 'Daily') {
-                ds.subsHistoryData(res,'Date', -50)
+                ds.subsHistoryDataDaily(res,'Date')
             }else if (ds.historymode() == 'Weekly') {
-                ds.subsHistoryData(res,'Week', 0)
+                ds.subsHistoryDataWeek(res,'Week')
             }else{
-                ds.subsHistoryDataFreq(res,'Date & Hour', -50)
+                var dates = []
+                $.each(res, function(i,v){
+                    dates.push(v.period.split(' ')[0])
+                })
+                var median = dates[Math.floor(dates.length / 2)]
+                ds.subsHistoryDataFreq(res, median)
             }
         }
     })
 }
 
-ds.subsHistoryDataFreq = function(res, categorytitle, rotate){
+ds.subsHistoryDataFreq = function(res, median){
     $("#subschart"+ds.index()).html('')
     $("#subschart"+ds.index()).kendoChart({
+        title: {
+            text: "Subscription Status"
+        },
         dataSource: {
             data:res,
             dataType: "json"
@@ -1054,25 +1192,10 @@ ds.subsHistoryDataFreq = function(res, categorytitle, rotate){
             style: "smooth"
         },
         series: [{
-        //     field: "status",
-        //     name: "Latency > Threshold",
-        //     color: "#7030a0"
-        // },{
-        //     field: "failed",
-        //     name: "Failed",
-        //     color: "red"
-        // },{
-        //     field: "inactive",
-        //     name: "Inactive",
-        //     color: "grey"
-        // },{
-        //     field: "mir_c",
-        //     name: "Mirror Continuous",
-        //     color: "#a9d18e"
             field: "status"
         },],
         valueAxis: {
-            max: 5,
+            max: 6,
             majorUnit: 1,
             minorUnit: 1,
             majorTicks: {
@@ -1086,15 +1209,34 @@ ds.subsHistoryDataFreq = function(res, categorytitle, rotate){
                 visible: true
             },
         },
-        categoryAxis: {
+        categoryAxis: [{
             field: "period",
             labels: {
-                rotation: rotate
+                rotation: 0
+            },
+            labels: {
+                template: function(e){
+                    var hour = e.value.split(' ')
+                    var hour = hour[1].split(':')
+                    return hour[0]
+                }
             },
             title:{
-                text: categorytitle,
+                font: "12px Arial,Helvetica,sans-serif",
+                text: median
+            }
+        },{
+            field: "time",
+            labels: {
+                visible: false
             },
-        },
+            line: {
+                visible: false
+            },
+            title:{
+                text: 'Hours & Date'
+            }
+        }],
         tooltip: {
             visible: false,
             template: "#= value #"
@@ -1102,9 +1244,12 @@ ds.subsHistoryDataFreq = function(res, categorytitle, rotate){
     });
 }
 
-ds.subsHistoryData = function(res, categorytitle, rotate){
+ds.subsHistoryDataDaily = function(res, categorytitle, rotate){
     $("#subschart"+ds.index()).html('')
     $("#subschart"+ds.index()).kendoChart({
+        title: {
+            text: "Subscription Status"
+        },
         dataSource: {
             data:res,
             dataType: "json"
@@ -1143,12 +1288,24 @@ ds.subsHistoryData = function(res, categorytitle, rotate){
             line: {
                 visible: true
             },
+            title:{
+                text: "Count Connection"
+            }
         },
         categoryAxis: {
             field: "period",
             labels: {
-                rotation: rotate,
-                step: 1
+                rotation: -50,
+                step: 1,
+                template:function(e){
+                    if (e.value == 0) {
+                        var start = e.dataItem.weekstart.split('-')[1] +'/'+ e.dataItem.weekstart.split('-')[2];
+                        var end = e.dataItem.weekend.split('-')[1] +'/'+ e.dataItem.weekend.split('-')[2];
+                        return start + ' ~ ' + end
+                    }else{
+                        return e.value
+                    }
+                }
             },
             title:{
                 text: categorytitle,
@@ -1161,9 +1318,80 @@ ds.subsHistoryData = function(res, categorytitle, rotate){
     });
 }
 
-ds.subsLineHistoryData = function(res, field, categorytitle, valuetitle, rotate){
+ds.subsHistoryDataWeek = function(res, categorytitle, rotate){
     $("#subschart"+ds.index()).html('')
     $("#subschart"+ds.index()).kendoChart({
+        title: {
+            text: "Subscription Status"
+        },
+        dataSource: {
+            data:res,
+            dataType: "json"
+        },
+        legend: {
+            position: "bottom"
+        },
+        chartArea: {
+            background: ""
+        },
+        seriesDefaults: {
+            type: 'line',
+            style: "smooth"
+        },
+        series: [{
+            field: "exceed",
+            name: "Latency > Threshold",
+            color: "#7030a0"
+        },{
+            field: "failed",
+            name: "Failed",
+            color: "red"
+        },{
+            field: "inactive",
+            name: "Inactive",
+            color: "grey"
+        },{
+            field: "mir_c",
+            name: "Mirror Continuous",
+            color: "#a9d18e"
+        },],
+        valueAxis: {
+            labels: {
+                visible: true,
+            },
+            line: {
+                visible: true
+            },
+            title:{
+                text: "Count Connection"
+            }
+        },
+        categoryAxis: {
+            field: "weekstart",
+            labels:{
+                template: function(e){
+                    var start = e.dataItem.weekstart.split('-')[1] +'/'+ e.dataItem.weekstart.split('-')[2];
+                    var end = e.dataItem.weekend.split('-')[1] +'/'+ e.dataItem.weekend.split('-')[2];
+                    return start + ' ~ ' + end
+                }
+            },
+            title:{
+                text: 'Date'
+            },
+        },
+        tooltip: {
+            visible: true,
+            template: "#= series.name #: #= value #"
+        }
+    });
+}
+
+ds.subsLineHistoryData = function(res, field, valuetitle, title, median){
+    $("#subschart"+ds.index()).html('')
+    $("#subschart"+ds.index()).kendoChart({
+        title: {
+            text: title
+        },
         dataSource: {
             data:res,
             dataType: "json"
@@ -1192,19 +1420,38 @@ ds.subsLineHistoryData = function(res, field, categorytitle, valuetitle, rotate)
                 text: valuetitle,
             },
         },
-        categoryAxis: {
+        categoryAxis: [{
             field: "category",
             labels: {
-                rotation: rotate
+                rotation: 0
+            },
+            labels: {
+                template: function(e){
+                    var hour = e.value.split(' ')
+                    var hour = hour[1].split(':')
+                    return hour[0]
+                }
             },
             title:{
-                text: categorytitle,
+                font: "12px Arial,Helvetica,sans-serif",
+                text: median
+            }
+        },{
+            field: "time",
+            labels: {
+                visible: false
             },
-        },
+            line: {
+                visible: false
+            },
+            title:{
+                text: 'Hours & Date'
+            }
+        }],
         tooltip: {
             visible: true,
             template: function(e){
-                if (field == 'records') {
+                // if (field == 'records' || field == 'sumDDL') {
                     var tables = []
                     $.each(e.dataItem.tables, function(i,v){
                         if (i == 0) {
@@ -1217,15 +1464,199 @@ ds.subsLineHistoryData = function(res, field, categorytitle, valuetitle, rotate)
                     return '<tr> <td>Table Name</td><td>:</td><td>' + tables + '</td> </tr>'
                 // }else{
                     // return '<tr><td>Count Latency</td><td>:</td><td>' + e.dataItem.num_latency + '</td></tr>'
-                }
+                // }
             },
         }
     });
 }
 
-ds.subsLineHistoryDataLatencyFreq = function(res, field, categorytitle, valuetitle, rotate, unit, min){
+ds.subsLineHistoryDataDaily = function(res, field, ytitle, unit, min, title){
+    _.each(res, function(v){
+        v.category = new Date(v.category);
+    });
+
     $("#subschart"+ds.index()).html('')
     $("#subschart"+ds.index()).kendoChart({
+        title: {
+            text: title
+        },
+        dataSource: res,
+        seriesDefaults: {
+            type: "scatter",
+            markers: {
+                size: 6
+            }
+        },
+        series: [{
+            xField: "category",
+            yField: field,
+        }],
+        xAxis: {
+            title: {
+                text: "Date",
+            },
+            type: "date",
+            labels: {
+              dateFormats: {
+                days:"M/d"
+              }
+            }
+        },
+        yAxis: {
+            title: {
+                text: ytitle,
+            },
+            labels: {
+                skip: 1,
+                step: 1
+            },
+            majorUnit: unit,
+            labels: {
+                template: function(e){
+                    if (e.value > 120){
+                        return '> 120'
+                    }else{
+                        return e.value
+                    }
+                }
+            },
+            min: min
+        },
+        tooltip: {
+            visible: true,
+            template: function(e){
+                // if (field == 'latency') {
+                //     return '<tr><td>Count Latency</td><td>:</td><td>' + e.dataItem.num_latency + '</td></tr>'
+                if (field == 'sumDDL') {
+                    var tables = []
+                    $.each(e.dataItem.tables, function(i,v){
+                        if (i == 0) {
+                            tables.push(v)
+                        }else{
+                            tables.push('<br/>'+v)
+                        }
+                    })
+
+                    return '<tr> <td>Table Name</td><td>:</td><td>' + tables + '</td> </tr>'
+                }else{
+                    var tables = []
+                    $.each(e.dataItem.table, function(i,v){
+                        if (i == 0) {
+                            tables.push(v)
+                        }else{
+                            tables.push('<br/>'+v)
+                        }
+                    })
+
+                    return '<tr> <td>Table Name</td><td>:</td><td>' + tables + '</td> </tr>'
+                }
+            },
+        },
+        legend:{
+            visible:false
+        }
+    });
+}
+
+ds.subsLineHistoryDataWeek = function(res, field, ytitle, unit, min, title){
+    var date = []
+    _.each(res, function(v){
+        var start = v.weekstart.split('-')[1] +'/'+ v.weekstart.split('-')[2];
+        var end = v.weekend.split('-')[1] +'/'+ v.weekend.split('-')[2];
+        date.push(start + '~' + end)
+    });
+    ds.date(date[0])
+    $("#subschart"+ds.index()).html('')
+    $("#subschart"+ds.index()).kendoChart({
+        title: {
+            text: title
+        },
+        dataSource: res,
+        seriesDefaults: {
+            type: "scatter",
+            markers: {
+                size: 6
+            }
+        },
+        series: [{
+            xField: "weekstart",
+            yField: field,
+        }],
+        xAxis: {
+            title: {
+                text: "Date",
+            },
+            type: "date",
+            labels: {
+                skip: 1,
+                step: 2,
+                template: function(e){
+                    return ds.date()
+                }
+            }
+        },
+        yAxis: {
+            title: {
+                text: ytitle,
+            },
+            labels: {
+                skip: 1,
+                step: 1
+            },
+            majorUnit: unit,
+            labels: {
+                template: function(e){
+                    if (e.value > 120){
+                        return '> 120'
+                    }else{
+                        return e.value
+                    }
+                }
+            },
+            min: min
+        },
+        tooltip: {
+            visible: true,
+            template: function(e){
+                // if (field == 'latency') {
+                    // return '<tr><td>Count Latency</td><td>:</td><td>' + e.dataItem.num_latency + '</td></tr>'
+                if (field == 'sumDDL') {
+                    var tables = []
+                    $.each(e.dataItem.tables, function(i,v){
+                        if (i == 0) {
+                            tables.push(v)
+                        }else{
+                            tables.push('<br/>'+v)
+                        }
+                    })
+
+                    return '<tr> <td>Table Name</td><td>:</td><td>' + tables + '</td> </tr>'
+                }else{
+                    var tables = []
+                    $.each(e.dataItem.table, function(i,v){
+                        if (i == 0) {
+                            tables.push(v)
+                        }else{
+                            tables.push('<br/>'+v)
+                        }
+                    })
+
+                    return '<tr> <td>Table Name</td><td>:</td><td>' + tables + '</td> </tr>'
+                }
+            },
+        },
+        legend:{
+            visible:false
+        }
+    });
+}
+
+ds.subsLineHistoryDataLatencyFreq = function(res, field, valuetitle, unit, min, title, median){
+    $("#subschart"+ds.index()).html('')
+    $("#subschart"+ds.index()).kendoChart({
+        title: {
+            text: title
+        },
         dataSource: {
             data:res,
             dataType: "json"
@@ -1246,12 +1677,32 @@ ds.subsLineHistoryDataLatencyFreq = function(res, field, categorytitle, valuetit
             title:{
                 text: 'Latency',
             },
+            markers: {
+            visible: true,
+                border: {
+                    width: 1,
+                    color: function(e){
+                        if (e.value > 120){
+                            return 'green'
+                        }else{
+                            return '#ff6800'
+                        }
+                    },
+                }
+            },
         },{
             field: field,
             name: field,
             title:{
                 text: field,
             },
+            markers: {
+                visible: true,
+                size: 1,
+            },
+            tooltip:{
+                visible: false
+            }
         }],
         valueAxis: {
             labels: {
@@ -1275,15 +1726,34 @@ ds.subsLineHistoryDataLatencyFreq = function(res, field, categorytitle, valuetit
             },
             min: min
         },
-        categoryAxis: {
-            field: "category",
+        categoryAxis: [{
+            field: "period",
             labels: {
-                rotation: rotate
+                rotation: 0
+            },
+            labels: {
+                template: function(e){
+                    var hour = e.dataItem.category.split(' ')
+                    var hour = hour[1].split(':')
+                    return hour[0]
+                }
             },
             title:{
-                text: categorytitle,
+                font: "12px Arial,Helvetica,sans-serif",
+                text: median
+            }
+        },{
+            field: "time",
+            labels: {
+                visible: false
             },
-        },
+            line: {
+                visible: false
+            },
+            title:{
+                text: 'Hours & Date'
+            }
+        }],
         tooltip: {
             visible: true,
             template: "#= series.name #: #= value #"
@@ -1291,32 +1761,88 @@ ds.subsLineHistoryDataLatencyFreq = function(res, field, categorytitle, valuetit
     });
 }
 
-ds.subsLineHistoryDataDaily = function(res, field, title, unit, min){
+ds.subsLineHistoryDataLatencyDaily = function(res, field, ytitle, unit, min, title){
     _.each(res, function(v){
         v.category = new Date(v.category);
     });
 
+    var groups = _.groupBy(res, function(value){
+        return value.category + '#' + value.latgroup
+    })
+    var data = _.map(groups, function(group){
+        return {
+            category: group[0].category,
+            latgroup: group[0].latgroup,
+            num_latency: _.pluck(group, 'num_latency'),
+            threshold: _.pluck(group, 'threshold'),
+            latency: _.pluck(group, 'latency'),
+            // value: 15
+            value: _.reduce(_.pluck(group, 'latency'), function(memo, num){ 
+                // return memo + num;
+                if (group[0].latgroup == '<30') {
+                    return 15
+                } else if (group[0].latgroup == '<60') {
+                    return 45
+                } else if (group[0].latgroup == '<90') {
+                    return 75
+                } else if (group[0].latgroup == '<120') {
+                    return 105
+                } else {
+                    return 135
+                }
+            }, 0)
+        }
+    })
+
     $("#subschart"+ds.index()).html('')
     $("#subschart"+ds.index()).kendoChart({
-        dataSource: res,
+        title: {
+            text: title
+        },
+        dataSource: data,
         seriesDefaults: {
             type: "scatter",
             markers: {
-                size: 6
+                size: function(e){
+                    if (field == 'value') {
+                        return 15
+                    }else{
+                        return 6
+                    }
+                }
             }
         },
         series: [{
             xField: "category",
             yField: field,
+            labels:{
+                visible: true,
+                color: '#ff6800',
+                font: "15px Arial,Helvetica,sans-serif",
+                template: function(e){
+                    var num = []
+                    $.each(e.dataItem.num_latency, function(i,v){
+                        num.push(v)
+                    })
+                    var sum = _.reduce(num, function(memo, num){ return memo + num; }, 0);
+                    return kendo.toString(sum, 'n0')
+                }
+            }
         }],
         xAxis: {
             title: {
                 text: "Date",
+            },
+            type: "date",
+            labels: {
+              dateFormats: {
+                days:"M/d"
+              }
             }
         },
         yAxis: {
             title: {
-                text: title,
+                text: ytitle,
             },
             labels: {
                 skip: 1,
@@ -1325,7 +1851,7 @@ ds.subsLineHistoryDataDaily = function(res, field, title, unit, min){
             majorUnit: unit,
             labels: {
                 template: function(e){
-                    if (e.value > 120){
+                    if (e.value == 120){
                         return '> 120'
                     }else{
                         return e.value
@@ -1335,10 +1861,19 @@ ds.subsLineHistoryDataDaily = function(res, field, title, unit, min){
             min: min
         },
         tooltip: {
-            visible: true,
+            visible: false,
             template: function(e){
-                if (field == 'latency') {
-                    return '<tr><td>Count Latency</td><td>:</td><td>' + e.dataItem.num_latency + '</td></tr>'
+                if (field == 'value') {
+                    var num = []
+                    $.each(e.dataItem.num_latency, function(i,v){
+                        if (i == 0) {
+                            num.push(v)
+                        }else{
+                            num.push(' '+v)
+                        }
+                    })
+
+                    return '<tr> <td>Count Latency</td><td>:</td><td>' + num + '</td> </tr>'
                 }else{
                     var tables = []
                     $.each(e.dataItem.table, function(i,v){
@@ -1359,33 +1894,96 @@ ds.subsLineHistoryDataDaily = function(res, field, title, unit, min){
     });
 }
 
-ds.subsLineHistoryDataWeek = function(res, field, title, unit, min){
+ds.subsLineHistoryDataLatencyWeek = function(res, field, ytitle, unit, min, title){
+    var date = []
+    _.each(res, function(v){
+        var start = v.weekstart.split('-')[1] +'/'+ v.weekstart.split('-')[2];
+        var end = v.weekend.split('-')[1] +'/'+ v.weekend.split('-')[2];
+        date.push(start + '~' + end)
+    });
+    ds.date(date[0])
+    var groups = _.groupBy(res, function(value){
+        return value.category + '#' + value.latgroup
+    })
+    var data = _.map(groups, function(group){
+        return {
+            weekstart: group[0].weekstart,
+            latgroup: group[0].latgroup,
+            num_latency: _.pluck(group, 'num_latency'),
+            threshold: _.pluck(group, 'threshold'),
+            latency: _.pluck(group, 'latency'),
+            // value: 15
+            value: _.reduce(_.pluck(group, 'latency'), function(memo, num){ 
+                // return memo + num;
+                if (group[0].latgroup == '<30') {
+                    return 15
+                } else if (group[0].latgroup == '<60') {
+                    return 45
+                } else if (group[0].latgroup == '<90') {
+                    return 75
+                } else if (group[0].latgroup == '<120') {
+                    return 105
+                } else {
+                    return 135
+                }
+            }, 0)
+        }
+    })
     $("#subschart"+ds.index()).html('')
     $("#subschart"+ds.index()).kendoChart({
-        dataSource: {
-            data:res
+        title: {
+            text: title
         },
+        dataSource: data,
         seriesDefaults: {
             type: "scatter",
             markers: {
-                size: 6
+                size: function(e){
+                    if (field == 'value') {
+                        return 15
+                    }else{
+                        return 6
+                    }
+                }
             }
         },
         series: [{
-            xField: "category",
+            xField: "weekstart",
             yField: field,
+            labels:{
+                visible: true,
+                color: '#ff6800',
+                font: "15px Arial,Helvetica,sans-serif",
+                template: function(e){
+                    var num = []
+                    $.each(e.dataItem.num_latency, function(i,v){
+                        num.push(v)
+                    })
+                    var sum = _.reduce(num, function(memo, num){ return memo + num; }, 0);
+                    return kendo.toString(sum, 'n0')
+                }
+            }
         }],
         xAxis: {
             title: {
-                text: "Week",
+                text: "Date",
+            },
+            type: "date",
+            labels: {
+                skip: 1,
+                step: 2,
+                template: function(e){
+                    return ds.date()
+                }
             }
         },
         yAxis: {
             title: {
-                text: title,
+                text: ytitle,
             },
             labels: {
-                skip: 1
+                skip: 1,
+                step: 1
             },
             majorUnit: unit,
             labels: {
@@ -1400,12 +1998,20 @@ ds.subsLineHistoryDataWeek = function(res, field, title, unit, min){
             min: min
         },
         tooltip: {
-            visible: true,
+            visible: false,
             template: function(e){
-                if (field == 'latency') {
-                    return '<tr><td>Week</td><td>:</td><td>' + e.dataItem.category + '</td></tr>'+
-                    '<tr><td>Count Latency</td><td>:</td><td>' + e.dataItem.num_latency + '</td></tr>'
-               }else{
+                if (field == 'value') {
+                    var num = []
+                    $.each(e.dataItem.num_latency, function(i,v){
+                        if (i == 0) {
+                            num.push(v)
+                        }else{
+                            num.push(' '+v)
+                        }
+                    })
+
+                    return '<tr> <td>Count Latency</td><td>:</td><td>' + num + '</td> </tr>'
+                }else{
                     var tables = []
                     $.each(e.dataItem.table, function(i,v){
                         if (i == 0) {
@@ -1415,9 +2021,8 @@ ds.subsLineHistoryDataWeek = function(res, field, title, unit, min){
                         }
                     })
 
-                    return '<tr><td>Week</td><td>:</td><td>' + e.dataItem.category + '</td></tr>'+
-                           '<tr><td>Table Name</td><td>:</td><td>' + tables + '</td></tr>'
-               }
+                    return '<tr> <td>Table Name</td><td>:</td><td>' + tables + '</td> </tr>'
+                }
             },
         },
         legend:{
@@ -1440,6 +2045,7 @@ function changeLabels(val){
 
 var Subs = [
     "",
+    "Unknown",
     "Inactive",
     "Failed",
     "Mirror Continuous",
@@ -1471,6 +2077,75 @@ function whereOr(arr, condition) {
     return iface;
 }
 
+ds.generateExcel = function(){
+    var payload = {
+        Server: ds.detailed.hostname(),
+        Subscription: ds.detailed.subscription(),
+        DateFrom: kendo.toString(new Date(ds.subsstartdate()), "yyyy-MM-dd 00:00:00"),
+        DateTo: kendo.toString(new Date(ds.subsenddate()), "yyyy-MM-dd 00:00:00"),
+    }
+     if (ds.historymode() == 'Daily') {
+        payload.DateTo = kendo.toString(new Date(moment(ds.subsstartdate()).add(8, 'days')), "yyyy-MM-dd 00:00:00")
+    }else if (ds.historymode() == 'Weekly') {
+        payload.DateTo = kendo.toString(new Date(moment(ds.subsstartdate()).add(8, 'week')), "yyyy-MM-dd 00:00:00")
+    }else{
+        payload.DateTo = kendo.toString(new Date(ds.subsstartdate()), "yyyy-MM-dd 00:00:00")
+    }
+    ajaxPost("/dashboard/genexcelbusytables", payload, function (res) {
+        window.location.href = res.data.filepath
+    })
+}
+
+
+// server status
+ds.getSS = function(){
+    var payload = {
+
+    }
+    ajaxPost("/dashboard/getserverdetail", payload, function (res) {
+        var tiles = [];
+        $.each(res.data.data, function(i,v){
+            tiles.push(v)
+        });
+        ds.serverList(tiles);
+        ds.loading(false)
+    })
+}
+
+ds.detailSS = function(index){
+    ds.ssindex(index)
+    console.log(ds.ssindex())
+    // ds.forDetail(index)
+    // ds.detailloading(true)
+    // ds.detailed.hostname(ds.tileList()[index].Server)
+    // ds.detailed.serverport(ds.tileList()[index].Port)
+    // ds.detailed.lastsync(ds.tileList()[index].LastSync)
+
+    // ds.detailed.server(ds.tileList()[index].Server)
+    
+    // ds.detailed.purple(kendo.toString(ds.tileList()[index].PurpleSubsPrct, "n0"))
+    // ds.detailed.green(kendo.toString(ds.tileList()[index].GreenSubsPrct, "n0"))
+    // ds.detailed.red(kendo.toString(ds.tileList()[index].RedSubsPrct, "n0"))
+    // ds.detailed.grey(kendo.toString(ds.tileList()[index].GreySubsPrct, "n0"))
+    
+    // var payload = {
+    //     Server: ds.detailed.hostname(),
+    //     Port: ds.detailed.serverport(),
+    //     LastSync: kendo.toString(new Date(ds.detailed.lastsync()), "yyyy-MM-dd HH:mm:ss"),
+    // }
+    // ajaxPost("/dashboard/getapplicationwisedata", payload, function (res) {
+    //     var app = [];
+    //     $.each(res.data.data, function(i,v){
+    //         app.push(v)
+    //     });
+    //     ds.applicationList(app);
+    //     ds.detailloading(false)
+    //     ds.serverhistory(false)
+    //     ds.apphistory(false)
+    //     ds.subshistory(false)
+    // })
+}
 $(function(){
-	ds.getTiles()
+	ds.getCDC()
+    ds.getSS()
 })
